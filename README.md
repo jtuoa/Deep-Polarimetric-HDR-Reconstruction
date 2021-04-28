@@ -22,12 +22,12 @@ pip install -r requirements.txt
 The collected EdPolCommunity dataset can be found in the dataset folder on Google Drive: [pol_outdoor1](https://drive.google.com/file/d/18nhczTSCFMB4_oUZZzyF_kHhqNCt8MGs/view?usp=sharing), [pol_outdoor2](https://drive.google.com/file/d/1za16n_CeqPrNUAkFdxjT2Hf_bTB3cthi/view?usp=sharing)
 
 ### Pretrained model
-The pretrained model checkpoints can be found in the checkpoints folder on [Google Drive](https://drive.google.com/file/d/1luFzTFl1top5VSuZWwZz676xugn7WKf_/view?usp=sharing)
+The pretrained model checkpoints can be found in the checkpoints folder on [Google Drive](https://drive.google.com/file/d/13RZGW3BnX4O5liuYHMHBdYt9srewLMlS/view?usp=sharing)
 
 ### Inference
 Sample code for inference using the DPHR model
 ```
-python sample_code.py --i0 PATH/TO/POL0 --i45 PATH/TO/POL45 --i90 PATH/TO/POL90 --i135 PATH/TO/POL135 --out_dir PATH/TO/OUT/im_{idx}.png --weights model/DPHR_checkpoint.pt 
+python sample_code.py --i0 PATH/TO/POL0folder --i45 PATH/TO/POL45folder --i90 PATH/TO/POL90folder --i135 PATH/TO/POL135folder --out_dir PATH/TO/OUTfolder/im_{idx}.png --weights model/DPHR_checkpoint.pt 
 ```
 Training code will be added soon.
 

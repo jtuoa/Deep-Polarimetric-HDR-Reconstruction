@@ -1,4 +1,4 @@
-# Deep-Polarimetric-HDR-Reconstruction
+# Deep-Polarimetric-HDR-Reconstruction (DPHR)
 Deep HDR Reconstruction using Polarimetric Cues from the Polarization Camera
 
 <img src="https://user-images.githubusercontent.com/38761535/116477584-0fb4aa80-a83a-11eb-9a01-682f84ae97af.PNG" width="834" height="462">

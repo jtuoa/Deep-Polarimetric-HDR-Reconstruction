@@ -12,12 +12,12 @@ from mylib.image import unnormalize
 from mylib.img_io import load_image, writeLDR, writeNPY, writeEXR
 from mylib.io import load_ckpt
 from mylib.io import print_
-from mylib.util import make_dirs, get_saturated_regions 
+from mylib.util import make_dirs, get_saturated_regions, compute_mean_channels
 
 from network.softconvmask_ import SoftConvNotLearnedMaskUNet
 
 
-parser = argparse.ArgumentParser(description="Single Image HDR Reconstruction Using a CNN with Masked Features and Perceptual Loss")
+parser = argparse.ArgumentParser(description="Deep Polarimetric HDR Reconstruction")
 parser.add_argument('--i0', '-i0', type=str, required=True, help='Input images pol0 directory.')
 parser.add_argument('--i45', '-i45', type=str, required=True, help='Input images pol45 directory.')
 parser.add_argument('--i90', '-i90', type=str, required=True, help='Input images pol90 directory.')
@@ -48,37 +48,57 @@ class HDRTestDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         input_dir = self.images[index]
 
-        #get Lc
+        #get input
         image0 = load_image(input_dir[0]).astype('float32') 
         image45 = load_image(input_dir[1]).astype('float32')
         image90 = load_image(input_dir[2]).astype('float32')
         image135 = load_image(input_dir[3]).astype('float32')
-        image = self.compute_mean(image0, image45, image90, image135)
-        assert np.min(image) >= 0.0 and np.max(image) <= 1.0
+        
+        image0 = self.normalize(image0)
+        image45 = self.normalize(image45)
+        image90 = self.normalize(image90)
+        image135 = self.normalize(image135)
+        assert np.min(image0) >= 0.0 and np.max(image0) <= 1.0  
 
-        #get Ht (HDR formulation)
+        #get HDR
         t0 = 769/1e6
         image_hdr = self.compute_xuesong_HDR_color(image0, image45, image90, image135,t0)
-        image_hdr = image_hdr / np.max(image_hdr)
+        image_hdr = image_hdr / np.max(image_hdr) #[0,1]
         assert np.min(image_hdr) >= 0.0 and np.max(image_hdr) <= 1.0
+        assert image_hdr.shape == (512,512,3)
         image_hdr = torch.from_numpy(image_hdr).permute(2,0,1)
         
         #get dolp
         dop = self.compute_dop_color(image0, image45, image90, image135)
+        dop = np.dstack((dop, dop, dop, dop))
         assert np.min(dop) >= 0.0 and np.max(dop) <= 1.0
+        assert dop.shape == (512,512,12)
         dop = torch.from_numpy(dop).permute(2,0,1)
 
-        # get mask K
-        conv_mask = 1 - get_saturated_regions(image)
+        # get saturation mask
+        conv_mask0 = 1.0 - get_saturated_regions(image0) 
+        conv_mask45 = 1.0 - get_saturated_regions(image45) 
+        conv_mask90 = 1.0 - get_saturated_regions(image90) 
+        conv_mask135 = 1.0 - get_saturated_regions(image135) 
+        conv_mask = np.dstack((conv_mask0, conv_mask45, conv_mask90, conv_mask135))
         assert np.min(conv_mask)>=0.0 and np.max(conv_mask)<=1.0
+        assert conv_mask.shape == (512,512,12)
         conv_mask = torch.from_numpy(conv_mask).permute(2,0,1)
 
-        # apply transform to Lc
-        image = self.img_transform(image)
+        # apply transform to input image
+        image0 = self.img_transform(image0)
+        image45 = self.img_transform(image45)
+        image90 = self.img_transform(image90)
+        image135 = self.img_transform(image135)
+        image = torch.cat([image0, image45, image90, image135], dim=0)
+        assert image.shape == (12,512,512)
 
         return image, conv_mask, dop, image_hdr
 
 
+    def normalize(self, image):
+        return image / np.max(image)
+        
     def compute_dop_color(self, I0, I45, I90, I135):
         w,h,ch = I0.shape
 		
@@ -200,7 +220,23 @@ if __name__ == '__main__':
         print_("\tdone model inference ...\n")
 
 
-        image = unnormalize(image).permute(0,2,3,1).numpy()[0,:,:,:] 
+        image[:,:3,:,:] = unnormalize(image[:,:3,:,:])
+        image[:,3:6,:,:] = unnormalize(image[:,3:6,:,:])
+        image[:,6:9,:,:] = unnormalize(image[:,6:9,:,:])
+        image[:,9:12,:,:] = unnormalize(image[:,9:12,:,:])
+        
+        image = compute_mean_channels(image) #[0,1]
+        mask_M = compute_mean_channels(mask_M) #[0,1]
+        mask_N = compute_mean_channels(mask_N) #[0,1]
+        dop = dop[:,:3,:,:] #slice
+        
+        if pred_img.shape == (1,12,512,512):
+        	pred_img = compute_mean_channels(pred_img)
+        
+        assert image.shape == mask_M.shape == mask_N.shape == dop.shape == pred_img.shape
+        assert torch.min(image)>=0.0 and torch.min(mask_M)>=0.0 and torch.min(dop)>=0.0
+        
+        image = (image).permute(0,2,3,1).numpy()[0,:,:,:]
         mask_M = mask_M.permute(0,2,3,1).numpy()[0,:,:,:] 
         mask_N = mask_N.permute(0,2,3,1).numpy()[0,:,:,:] 
         dop = dop.permute(0,2,3,1).numpy()[0,:,:,:]

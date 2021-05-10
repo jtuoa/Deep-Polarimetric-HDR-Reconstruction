@@ -7,19 +7,17 @@ from network.net_utils import weights_init
 
 class SoftConvNotLearnedMask(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, bias=True):
+                 padding=0, dilation=1, groups=4, bias=True):
         super().__init__()
 
         self.input_conv = nn.Conv2d(in_channels, out_channels, kernel_size,
-                                    stride, padding, dilation, 1, bias)
+                                    stride, padding, dilation, groups, bias)
         self.mask_update_conv = nn.Conv2d(in_channels, out_channels, kernel_size,
-                                   stride, padding, dilation, 1, False)
+                                   stride, padding, dilation, groups, False)
                 
         self.input_conv.apply(weights_init('xavier'))
-
         
     def forward(self, input, mask):
-
         output = self.input_conv(input * mask)
 
         with torch.no_grad():
@@ -28,7 +26,7 @@ class SoftConvNotLearnedMask(nn.Module):
             k = self.mask_update_conv.weight.view((filters, -1)).sum(1)
             norm = k.view(1,-1,1,1).repeat(mask.shape[0],1,1,1)
             new_mask = self.mask_update_conv(mask)/(norm + 1e-6) 
-
+        
         return output, new_mask
 
 class PCBActiv(nn.Module):
@@ -37,9 +35,9 @@ class PCBActiv(nn.Module):
         if sample == 'down-5':
             self.conv = SoftConvNotLearnedMask(in_ch, out_ch, 5, 2, 2, bias=conv_bias) 
         elif sample == 'down-7':
-            self.conv = SoftConvNotLearnedMask(in_ch, out_ch, 7, 2, 3, bias=conv_bias) 
+            self.conv = SoftConvNotLearnedMask(in_ch, out_ch, 7, 2, 3, bias=conv_bias)
         elif sample == 'down-3':
-            self.conv = SoftConvNotLearnedMask(in_ch, out_ch, 3, 2, 1, bias=conv_bias) 
+            self.conv = SoftConvNotLearnedMask(in_ch, out_ch, 3, 2, 1, bias=conv_bias)
         else:
             self.conv = SoftConvNotLearnedMask(in_ch, out_ch, 3, 1, 1, bias=conv_bias)
 
@@ -49,16 +47,17 @@ class PCBActiv(nn.Module):
             self.activation = nn.LeakyReLU(negative_slope=0.2)
             
     def forward(self, input, input_mask):
-        h, h_mask = self.conv(input, input_mask)        
+        h, h_mask = self.conv(input, input_mask)
+        
         if hasattr(self, 'activation'):
             h = self.activation(h)
             
         return h, h_mask
 
 class SoftConvNotLearnedMaskUNet(nn.Module):
-    def __init__(self, layer_size=7, input_channels=3, upsampling_mode='nearest'):
+    def __init__(self, layer_size=7, input_channels=12, upsampling_mode='nearest'):
         super().__init__()
-        self.freeze_enc_bn = False 
+        self.freeze_enc_bn = False
         self.upsampling_mode = upsampling_mode
         self.layer_size = layer_size
         self.enc_1 = PCBActiv(input_channels, 64, bn=False, sample='down-7')
@@ -77,7 +76,8 @@ class SoftConvNotLearnedMaskUNet(nn.Module):
         self.dec_2 = PCBActiv(128+64, 64, activ='leaky')
         self.dec_1 = PCBActiv(64+input_channels, input_channels,
                               bn=False, activ=None, conv_bias=True)
-
+        self.dec_1by1 = nn.Conv2d(4, 1, (1,1))       
+        
     def forward(self, input, input_mask):
         h_dict = {}  
         h_mask_dict = {} 
@@ -108,7 +108,18 @@ class SoftConvNotLearnedMaskUNet(nn.Module):
             h, h_mask = getattr(self, dec_l_key)(h, h_mask)
             h_mask_dict[dec_l_key] = h_mask
 
-        return h
+
+        h_r = torch.cat([torch.unsqueeze(h[:,0,:,:],1), torch.unsqueeze(h[:,3,:,:],1), torch.unsqueeze(h[:,6,:,:],1), torch.unsqueeze(h[:,9,:,:],1)], dim=1)
+        h_g = torch.cat([torch.unsqueeze(h[:,1,:,:],1), torch.unsqueeze(h[:,4,:,:],1), torch.unsqueeze(h[:,7,:,:],1), torch.unsqueeze(h[:,10,:,:],1)], dim=1)
+        h_b = torch.cat([torch.unsqueeze(h[:,2,:,:],1), torch.unsqueeze(h[:,5,:,:],1), torch.unsqueeze(h[:,8,:,:],1), torch.unsqueeze(h[:,11,:,:],1)], dim=1)
+        assert h_r.shape == h_g.shape == h_b.shape 
+        
+        h_r = self.dec_1by1(h_r)
+        h_g = self.dec_1by1(h_g)
+        h_b = self.dec_1by1(h_b)
+        h_ = torch.cat([h_r, h_g, h_b], dim=1)    
+                
+        return h_
 
     
     def train(self, mode=True):

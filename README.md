@@ -27,7 +27,7 @@ pip install -r requirements.txt
 The collected EdPolCommunity dataset can be found in the dataset folder on Google Drive: [pol_outdoor1](https://drive.google.com/file/d/18nhczTSCFMB4_oUZZzyF_kHhqNCt8MGs/view?usp=sharing), [pol_outdoor2](https://drive.google.com/file/d/1za16n_CeqPrNUAkFdxjT2Hf_bTB3cthi/view?usp=sharing)
 
 ### Pretrained model
-The pretrained model checkpoints can be found in the checkpoints folder on [Google Drive](https://drive.google.com/file/d/13RZGW3BnX4O5liuYHMHBdYt9srewLMlS/view?usp=sharing)
+The pretrained model checkpoints can be found in the checkpoints folder on [Google Drive](https://drive.google.com/file/d/1ic-viojPOSnz95WgAP-pk1NggGY85bPw/view?usp=sharing)
 
 ### Inference
 Sample code for inference using the DPHR model

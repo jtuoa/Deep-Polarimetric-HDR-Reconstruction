@@ -41,3 +41,13 @@ We provide more visual comparisons in the supplementary material PDF. Namely, we
 
 ## Reference
 If you find this work useful in your research, please cite:
+```
+@misc{https://doi.org/10.48550/arxiv.2203.14190,
+  doi = {10.48550/ARXIV.2203.14190},  
+  url = {https://arxiv.org/abs/2203.14190},  
+  author = {Ting, Juiwen and Shakeri, Moein and Zhang, Hong},  
+  title = {Deep Polarimetric HDR Reconstruction},  
+  publisher = {arXiv},  
+  year = {2022},
+}
+```

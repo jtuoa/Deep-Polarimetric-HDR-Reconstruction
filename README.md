@@ -36,9 +36,6 @@ python sample_code.py --i0 PATH/TO/POL0folder --i45 PATH/TO/POL45folder --i90 PA
 ```
 Training code will be added soon.
 
-### Supplementary materials
-We provide more visual comparisons in the supplementary material PDF. Namely, we provide more qualitative results on the comparison with state-of-the-art methods.
-
 ## Reference
 If you find this work useful in your research, please cite:
 ```
